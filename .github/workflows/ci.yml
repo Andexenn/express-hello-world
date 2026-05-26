@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+
+jobs:
+  build:
+    name: CI for hello from express - devops course
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Announce start
+        run: |
+          echo "=== CI: Starting pipeline for $GITHUB_REPOSITORY on $GITHUB_REF ==="
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (including dev for tests)
+        run: |
+          echo "--- Step: Install dependencies (dev included) ---"
+          echo "Checking for package-lock.json and running preferred installer..."
+          if [ -f package-lock.json ]; then
+            echo "Found package-lock.json — running npm ci"
+            npm ci --silent
+          else
+            echo "No lockfile found — running npm install (includes dev deps)"
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Run tests
+        run: |
+          echo "--- Step: Test ---"
+          echo "Detecting whether a test script exists..."
+          if npm run | grep -q "test"; then
+            echo "Found test script — running npm test"
+            npm test
+          else
+            echo "No test script defined — skipping tests"
+          fi
+
+      - name: Prepare Docker buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./dockerfile
+          push: false
+          tags: express-hello-world:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.source=${{ github.repositoryUrl }}
+
+      - name: Show built image
+        run: |
+          echo "--- Step: Image info ---"
+          docker image ls --format 'table {{.Repository}}\t{{.Tag}}\t{{.Size}}' | sed -n '1,20p' || true
+
+      - name: Announce finish
+        run: |
+          echo "=== CI: Pipeline finished for $GITHUB_REPOSITORY on $GITHUB_REF ==="

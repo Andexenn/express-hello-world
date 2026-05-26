@@ -8,9 +8,15 @@
   "license": "MIT",
   "private": false,
   "scripts": {
-    "start": "node app.js"
+    "start": "node app.js",
+    "test": "mocha --exit"
   },
   "dependencies": {
     "express": "^5.0.0"
+  }
+  ,
+  "devDependencies": {
+    "mocha": "^10.2.0",
+    "supertest": "^6.3.3"
   }
 }
